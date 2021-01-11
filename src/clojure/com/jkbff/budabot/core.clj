@@ -1,8 +1,11 @@
 (ns com.jkbff.budabot.core
-	(:require [clojure.core.async :as async :refer [go go-loop thread chan close! <! <!! >! >!!]]
+	(:require [clojure.core.async :refer [chan close! <!! >!!]]
 			  [clj-http.client :as client]
-			  [com.jkbff.budabot.thread :as thread])
-	(:import (java.util.concurrent TimeUnit)))
+			  [clojure.data.json :as json]
+			  [clojure.tools.logging :as log]
+			  [com.jkbff.budabot.thread :as thread]
+			  [com.jkbff.budabot.helper :as helper])
+	(:import (java.util.concurrent TimeUnit ExecutorService)))
 
 
 ;(def letters ["a" "b" "c" "d" "e" "f" "g" "h" "i" "j" "k" "l" "m" "n" "o" "p" "q" "r" "s" "t" "u" "v" "w" "x" "y" "z"])
@@ -11,14 +14,14 @@
 (def thread-pool-factor 1)
 (def timeout-in-seconds 10000)
 
-(defn log [& args]
-	(print (apply str (conj (interpose " " args) "\n")))
-	(flush))
-
 (defn request-url
 	[url]
-	(log "requesting" url)
+	(log/debug "requesting" url)
 	(:body (client/get url)))
+
+(defn read-json
+	[s]
+	(json/read-str s :key-fn #(helper/format-keys (clojure.string/lower-case %))))
 
 (defn get-listing-page
 	[letter dimension]
@@ -29,19 +32,37 @@
 	(map #(rest (update-in % [3] clojure.string/trim))
 		 (re-seq #"(?s)<a href=\"//people.anarchy-online.com/org/stats/d/(\d+)/name/(\d+)\">(.+?)</a>" page)))
 
-(defn get-org-details [org-id dimension]
-	(request-url (format "http://people.anarchy-online.com/org/stats/d/%s/name/%s/basicstats.xml?data_type=json" dimension org-id)))
+(defn get-org-details
+	[org-id dimension]
+	(-> (format "http://people.anarchy-online.com/org/stats/d/%s/name/%s/basicstats.xml?data_type=json" dimension org-id)
+		request-url
+		read-json))
 
 (defn load-pages
-	[url-chan]
+	[pages-chan]
 	(doseq [dimension ["5" "6"]
 			letter letters]
-			(>!! url-chan (get-listing-page letter dimension)))
-	(close! url-chan))
+			(>!! pages-chan (get-listing-page letter dimension))))
 
 (defn load-org-details
-	[page]
-	(map (fn [[dimension id name]] (get-org-details id dimension)) (parse-orgs-from-page page)))
+	[pages-chan orgs-chan]
+	(loop [page (<!! pages-chan)]
+		(if (not (nil? page))
+			(do
+				(doseq [output (map (fn [[dimension id name]] (get-org-details id dimension)) (parse-orgs-from-page page))]
+					(>!! orgs-chan output))
+				(recur (<!! pages-chan))))))
+
+(defn save-orgs-to-database
+	[orgs-chan]
+	(loop [result (<!! orgs-chan)]
+		(if result
+			(do
+				;(log/info (str "retrieving result " result))
+				(log/info (get result 2))
+				(Thread/sleep 500)
+				;(log/info "saved to db")
+				(recur (<!! orgs-chan))))))
 
 (defn run
 	[]
@@ -50,26 +71,21 @@
 		  orgs-chan (chan channel-buffer-size)
 
 		  load-pages-pool (thread/execute-in-pool (* thread-pool-factor 1) #(load-pages pages-chan))
-		  load-orgs-pool (thread/process-channel (* thread-pool-factor 9) pages-chan orgs-chan load-org-details)]
+		  load-orgs-pool (thread/execute-in-pool (* thread-pool-factor 6)  #(load-org-details pages-chan orgs-chan))
+		  save-db-pool (thread/execute-in-pool (* thread-pool-factor 3) #(save-orgs-to-database orgs-chan))]
 
-		(loop [result (<!! orgs-chan)]
-			(if result
-				(do
-					;(println (str "retrieving result " result))
-					(Thread/sleep 500)
-					(log "received result")
-					(recur (<!! orgs-chan))
-					)))
+		(.awaitTermination load-pages-pool timeout-in-seconds TimeUnit/SECONDS)
+		(close! pages-chan)
 
-		(doseq [pool [load-pages-pool load-orgs-pool]]
-			(.awaitTermination pool timeout-in-seconds TimeUnit/MILLISECONDS))
+		(.awaitTermination load-orgs-pool timeout-in-seconds TimeUnit/SECONDS)
+		(close! orgs-chan)
 
-		))
+		(.awaitTermination save-db-pool timeout-in-seconds TimeUnit/SECONDS)))
 
 (defn -main
 	[& args]
-	(println "Starting")
+	(log/info "Starting")
 
-	(time (run))
+	(log/info (helper/timer (run)))
 
-	(println "Finished"))
+	(log/info "Finished"))

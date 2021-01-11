@@ -1,15 +1,16 @@
 (ns com.jkbff.budabot.thread
     (:require [clojure.core.async :as async])
-    (:import (java.util.concurrent Executors)))
+    (:import (java.util.concurrent Executors ExecutorService)))
 
-(defn execute-in-pool
+(defn ^ExecutorService execute-in-pool
     [n func]
     (let [pool (Executors/newFixedThreadPool n)]
-        (.execute pool func)
+        (dotimes [i n]
+            (.execute pool func))
         (.shutdown pool)
         pool))
 
-(defn ^:ExecutorService process-channel
+(defn ^ExecutorService process-channel
     [n in-chan out-chan func]
     (execute-in-pool n (fn [] (loop [item (async/<!! in-chan)]
                                   (if (not (nil? item))

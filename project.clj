@@ -19,7 +19,8 @@
                    [com.auth0/java-jwt "3.8.0"]
                    [com.auth0/jwks-rsa "0.8.1"] ; https://github.com/auth0/jwks-rsa-java
                    [org.clojure/core.async "1.0.567"]
-                   ]
+                   [org.clojure/tools.logging "1.1.0"]
+                   [log4j "1.2.17"]]
 
     :source-paths      ["src/clojure"]
     :java-source-paths ["src/java"]

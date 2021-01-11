@@ -26,3 +26,11 @@
 		  (str/lower-case x)
 		  (str/replace x #"_" "-")
 		  (keyword x)))
+
+(defmacro timer
+	"Evaluates expr and returns the time it took."
+	{:added "1.0"}
+	[expr]
+	`(let [start# (. System (nanoTime))]
+		 ~expr
+		 (str "Elapsed time: " (/ (double (- (. System (nanoTime)) start#)) 1000000.0) " msecs")))

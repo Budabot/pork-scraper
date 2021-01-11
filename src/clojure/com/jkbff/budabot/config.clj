@@ -15,3 +15,6 @@
 (defn DATABASE_PASSWORD [] (get-env-string "DATABASE_PASSWORD"))
 
 (defn XML_FILES_PATH [] (get-env-string "XML_FILES_PATH"))
+
+(defn PORK_SCRAPER_LETTERS [] (clojure.string/split (get-env-string "PORK_SCRAPER_LETTERS") ","))
+(defn PORK_SCRAPER_SERVERS [] (clojure.string/split (get-env-string "PORK_SCRAPER_SERVERS") ","))
