@@ -1,3 +1,4 @@
+DROP TABLE player;
 CREATE TABLE player (
 	nickname VARCHAR(50) NOT NULL,
 	char_id INT,
@@ -14,6 +15,7 @@ CREATE TABLE player (
 	defender_rank INT NOT NULL,
 	defender_rank_name VARCHAR(50) NOT NULL,
 	guild_id INT NOT NULL,
+	guild_name VARCHAR(255) NOT NULL,
 	server INT NOT NULL,
 	deleted SMALLINT NOT NULL,
 	last_checked BIGINT NOT NULL,
@@ -21,9 +23,11 @@ CREATE TABLE player (
 	PRIMARY KEY(nickname, server)
 );
 
-CREATE INDEX `player_server_guildId_dt` ON player(`server` ASC, `guild_id` ASC, `last_checked` ASC);
+CREATE INDEX `player_nickname_server` ON player(`nickname` ASC, `server` ASC);
 CREATE INDEX `player_last_checked` ON player(`last_checked` DESC);
+CREATE INDEX `player_last_changed` ON player(`last_changed` DESC);
 
+DROP TABLE player_history;
 CREATE TABLE player_history (
 	nickname VARCHAR(50) NOT NULL,
 	char_id INT,
@@ -40,12 +44,14 @@ CREATE TABLE player_history (
 	defender_rank INT NOT NULL,
 	defender_rank_name VARCHAR(50) NOT NULL,
 	guild_id INT NOT NULL,
+	guild_name VARCHAR(255) NOT NULL,
 	server INT NOT NULL,
 	deleted SMALLINT NOT NULL,
 	last_checked BIGINT NOT NULL,
 	last_changed BIGINT NOT NULL
 );
 
+DROP TABLE guild;
 CREATE TABLE guild (
 	guild_id INT NOT NULL,
 	guild_name VARCHAR(255) NOT NULL,
@@ -57,6 +63,7 @@ CREATE TABLE guild (
 	PRIMARY KEY(guild_id, server)
 );
 
+DROP TABLE guild_history;
 CREATE TABLE guild_history (
 	guild_id INT NOT NULL,
 	guild_name VARCHAR(255) NOT NULL,
@@ -67,6 +74,7 @@ CREATE TABLE guild_history (
 	last_changed BIGINT NOT NULL
 );
 
+DROP TABLE history_requests;
 CREATE TABLE history_requests (
 	request VARCHAR(50) NOT NULL,
 	server INT NOT NULL,
@@ -74,8 +82,11 @@ CREATE TABLE history_requests (
 	ip VARCHAR(50) NOT NULL
 );
 
+DROP TABLE batch_history;
 CREATE TABLE batch_history (
 	dt BIGINT NOT NULL,
 	elapsed BIGINT NOT NULL,
-	success SMALLINT NOT NULL
+	success SMALLINT NOT NULL,
+	updates INT NOT NULL,
+	errors INT NOT NULL
 );

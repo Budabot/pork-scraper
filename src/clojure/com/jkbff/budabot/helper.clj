@@ -27,10 +27,14 @@
 		  (str/replace x #"_" "-")
 		  (keyword x)))
 
+(defn compare-maps
+	[m1 m2 ks]
+	(= (select-keys m1 ks) (select-keys m2 ks)))
+
 (defmacro timer
 	"Evaluates expr and returns the time it took."
 	{:added "1.0"}
 	[expr]
 	`(let [start# (. System (nanoTime))]
 		 ~expr
-		 (str "Elapsed time: " (/ (double (- (. System (nanoTime)) start#)) 1000000.0) " msecs")))
+		 (str "Elapsed time: " (/ (double (- (. System (nanoTime)) start#)) 1000000000.0) " secs")))
