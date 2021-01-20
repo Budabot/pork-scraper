@@ -38,3 +38,9 @@
 	`(let [start# (. System (nanoTime))]
 		 ~expr
 		 (str "Elapsed time: " (/ (double (- (. System (nanoTime)) start#)) 1000000000.0) " secs")))
+
+(defn trim-string
+	[s]
+	(if (nil? s)
+		""
+		(clojure.string/trim s)))
