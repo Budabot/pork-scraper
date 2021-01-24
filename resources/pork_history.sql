@@ -18,8 +18,8 @@ CREATE TABLE player (
 	guild_name VARCHAR(255) NOT NULL,
 	server INT NOT NULL,
 	deleted SMALLINT NOT NULL,
-	last_checked BIGINT NOT NULL,
-	last_changed BIGINT NOT NULL,
+	last_checked INT NOT NULL,
+	last_changed INT NOT NULL,
 	PRIMARY KEY(nickname, server)
 );
 
@@ -47,8 +47,8 @@ CREATE TABLE player_history (
 	guild_name VARCHAR(255) NOT NULL,
 	server INT NOT NULL,
 	deleted SMALLINT NOT NULL,
-	last_checked BIGINT NOT NULL,
-	last_changed BIGINT NOT NULL
+	last_checked INT NOT NULL,
+	last_changed INT NOT NULL
 );
 
 DROP TABLE guild;
@@ -58,8 +58,8 @@ CREATE TABLE guild (
 	faction VARCHAR(50) NOT NULL,
 	server INT NOT NULL,
 	deleted SMALLINT NOT NULL,
-	last_checked BIGINT NOT NULL,
-	last_changed BIGINT NOT NULL,
+	last_checked INT NOT NULL,
+	last_changed INT NOT NULL,
 	PRIMARY KEY(guild_id, server)
 );
 
@@ -70,22 +70,22 @@ CREATE TABLE guild_history (
 	faction VARCHAR(50) NOT NULL,
 	server INT NOT NULL,
 	deleted SMALLINT NOT NULL,
-	last_checked BIGINT NOT NULL,
-	last_changed BIGINT NOT NULL
+	last_checked INT NOT NULL,
+	last_changed INT NOT NULL
 );
 
 DROP TABLE history_requests;
 CREATE TABLE history_requests (
 	request VARCHAR(50) NOT NULL,
 	server INT NOT NULL,
-	dt BIGINT NOT NULL,
+	dt INT NOT NULL,
 	ip VARCHAR(50) NOT NULL
 );
 
 DROP TABLE batch_history;
 CREATE TABLE batch_history (
-	dt BIGINT NOT NULL,
-	elapsed BIGINT NOT NULL,
+	dt INT NOT NULL,
+	elapsed INT NOT NULL,
 	success SMALLINT NOT NULL,
 	updates INT NOT NULL,
 	errors INT NOT NULL
