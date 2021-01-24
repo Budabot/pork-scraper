@@ -11,8 +11,8 @@
 			 (com.codahale.metrics MetricRegistry ConsoleReporter Counter)))
 
 
-(def letters (config/PORK_SCRAPER_LETTERS))
-(def dimensions (config/PORK_SCRAPER_SERVERS))
+(def letters (config/LETTERS))
+(def dimensions (config/SERVERS))
 (def channel-buffer-size 100)
 (def thread-pool-factor 1)
 (def timeout-in-seconds 10000)
@@ -214,7 +214,8 @@
 	[& args]
 	(log/info "Starting")
 
-	(db/create-tables)
+	(if (config/CREATE_TABLES)
+		(db/create-tables))
 
 	(let [timestamp (helper/unix-epoch-seconds)
 		  reporter (report-metrics-to-console metric-registry )]

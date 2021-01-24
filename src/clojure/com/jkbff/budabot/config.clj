@@ -8,6 +8,14 @@
 	[name]
 	(Integer/parseInt (get-env-string name)))
 
+(defn get-env-bool
+	[name]
+	(case (.toLowerCase (get-env-string name))
+		"0" false
+		"false" false
+		"1" true
+		"true" true))
+
 (defn DATABASE_TYPE [] (get-env-string "DATABASE_TYPE"))
 (defn DATABASE_NAME [] (get-env-string "DATABASE_NAME"))
 (defn DATABASE_HOST [] (get-env-string "DATABASE_HOST"))
@@ -16,5 +24,6 @@
 
 (defn XML_FILES_PATH [] (get-env-string "XML_FILES_PATH"))
 
-(defn PORK_SCRAPER_LETTERS [] (clojure.string/split (get-env-string "PORK_SCRAPER_LETTERS") ","))
-(defn PORK_SCRAPER_SERVERS [] (clojure.string/split (get-env-string "PORK_SCRAPER_SERVERS") ","))
+(defn LETTERS [] (clojure.string/split (get-env-string "PORK_SCRAPER_LETTERS") #","))
+(defn SERVERS [] (clojure.string/split (get-env-string "PORK_SCRAPER_SERVERS") #","))
+(defn CREATE_TABLES [] (get-env-bool "PORK_SCRAPER_CREATE_TABLES"))

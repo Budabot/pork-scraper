@@ -26,6 +26,6 @@
     :source-paths      ["src/clojure"]
     :java-source-paths ["src/java"]
     :repl-options {:init-ns com.jkbff.budabot.core}
-    :main beanstalk-worker.core
+    :main com.jkbff.budabot.core
     :target-path "target/%s"
     :profiles {:dev {}})
