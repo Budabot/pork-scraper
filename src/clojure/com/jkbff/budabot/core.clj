@@ -5,14 +5,14 @@
 			  [com.jkbff.budabot.helper :as helper]
 			  [com.jkbff.budabot.pork :as pork]
 			  [com.jkbff.budabot.db :as db]
-			  [clojure.java.jdbc :as j])
+			  [clojure.java.jdbc :as j]
+			  [com.jkbff.budabot.config :as config])
 	(:import (java.util.concurrent TimeUnit)
 			 (com.codahale.metrics MetricRegistry ConsoleReporter Counter)))
 
 
-;(def letters ["a" "b" "c" "d" "e" "f" "g" "h" "i" "j" "k" "l" "m" "n" "o" "p" "q" "r" "s" "t" "u" "v" "w" "x" "y" "z"])
-(def letters ["q"])
-(def dimensions ["5" "6"])
+(def letters (config/PORK_SCRAPER_LETTERS))
+(def dimensions (config/PORK_SCRAPER_SERVERS))
 (def channel-buffer-size 100)
 (def thread-pool-factor 1)
 (def timeout-in-seconds 10000)
@@ -214,7 +214,7 @@
 	[& args]
 	(log/info "Starting")
 
-	;(db/create-tables)
+	(db/create-tables)
 
 	(let [timestamp (helper/unix-epoch-seconds)
 		  reporter (report-metrics-to-console metric-registry )]
