@@ -22,7 +22,7 @@
 	</appender>
 
 	<logger name="com.jkbff">
-	    <level value="DEBUG" />
+	    <level value="INFO" />
 	</logger>
 
 	<logger name="org.apache.http">
