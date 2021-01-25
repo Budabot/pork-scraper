@@ -5,10 +5,11 @@
 			  [com.jkbff.budabot.helper :as helper]
 			  [com.jkbff.budabot.pork :as pork]
 			  [com.jkbff.budabot.db :as db]
+			  [com.jkbff.budabot.metrics :as metrics]
 			  [clojure.java.jdbc :as j]
 			  [com.jkbff.budabot.config :as config])
 	(:import (java.util.concurrent TimeUnit)
-			 (com.codahale.metrics MetricRegistry ConsoleReporter Counter)))
+			 (com.codahale.metrics ConsoleReporter)))
 
 
 (def letters (config/LETTERS))
@@ -20,40 +21,28 @@
 (def compare-fields [:first_name :last_name :guild_rank_name :level :faction :profession :gender :breed
 					 :defender_rank :guild_id :guild_name :deleted])
 
-(def metric-registry (MetricRegistry.))
-(def org-meter (.meter metric-registry "orgs"))
-(def org-char-meter (.meter metric-registry "org-characters"))
-(def unchecked-char-meter (.meter metric-registry "unorged-characters"))
-(def inserted-chars-counter (.counter metric-registry "inserted"))
-(def updated-chars-counter (.counter metric-registry "updated"))
-(def deleted-chars-counter (.counter metric-registry "deleted"))
-(def ^Counter errors-counter (.counter metric-registry "errors"))
-
-(def pages-chan-counter (.counter metric-registry "pages-chan-items"))
-(def orgs-chan-counter (.counter metric-registry "orgs-chan-items"))
-
 (defn load-pages
 	[pages-chan]
 	(doseq [dimension dimensions
 			letter letters]
 		(try
 			(>!! pages-chan (pork/get-listing-page letter dimension))
-			(.inc pages-chan-counter)
+			(.inc metrics/pages-chan-counter)
 			(catch Exception e (do (log/error e)
-								   (.inc errors-counter))))))
+								   (.inc metrics/errors-counter))))))
 
 (defn load-org-details
 	[pages-chan orgs-chan]
 	(loop [page (<!! pages-chan)]
 		(if page
 			(do
-				(.dec pages-chan-counter)
+				(.dec metrics/pages-chan-counter)
 				(try
 					(doseq [output (map (fn [[dimension id name]] (pork/get-org-details id dimension)) (pork/parse-orgs-from-page page))]
 						(>!! orgs-chan output)
-						(.inc orgs-chan-counter))
+						(.inc metrics/orgs-chan-counter))
 					(catch Exception e (do (log/error e "")
-										   (.inc errors-counter))))
+										   (.inc metrics/errors-counter))))
 				(recur (<!! pages-chan))))))
 
 (defn ^ConsoleReporter report-metrics-to-console
@@ -121,7 +110,7 @@
 			(nil? db-char)
 			(do
 				(db/insert-char db-conn current-char)
-				(.inc inserted-chars-counter))
+				(.inc metrics/inserted-chars-counter))
 
 			; if both are deleted, or both are the same, update last_checked only
 			(or (= 1 (:deleted current-char) (:deleted db-char)) (helper/compare-maps db-char current-char compare-fields))
@@ -131,13 +120,13 @@
 			(= 1 (:deleted current-char))
 			(do
 				(db/delete-char db-conn name server timestamp)
-				(.inc deleted-chars-counter))
+				(.inc metrics/deleted-chars-counter))
 
 			; otherwise update existing record
 			:else
 			(do
 				(db/update-char db-conn current-char)
-				(.inc updated-chars-counter)))))
+				(.inc metrics/updated-chars-counter)))))
 
 (defn save-orgs-to-database
 	[orgs-chan timestamp]
@@ -145,13 +134,13 @@
 		(if result
 			(let [[org-info members last-updated] result
 				  members (map #(normalize-org-member org-info %) members)]
-				(.dec orgs-chan-counter)
-				(.mark org-meter)
+				(.dec metrics/orgs-chan-counter)
+				(.mark metrics/org-meter)
 				;(log/debug last-updated)
 				(j/with-db-connection [db-conn (db/get-db)]
 					(doseq [member members]
 						(update-char-if-changed db-conn member timestamp)
-						(.mark org-char-meter)))
+						(.mark metrics/org-char-meter)))
 				(recur (<!! orgs-chan))))))
 
 (defn load-single-chars
@@ -163,8 +152,8 @@
 					(>!! chars-chan [{:nickname (:nickname char) :server (:server char) :deleted 1} nil nil])
 					(>!! chars-chan result)))
 			(catch Exception e (do (log/error e)
-								   (.inc errors-counter))))
-		(.mark unchecked-char-meter)))
+								   (.inc metrics/errors-counter))))
+		(.mark metrics/unchecked-char-meter)))
 
 (defn save-single-chars
 	[chars-chan timestamp]
@@ -219,16 +208,16 @@
 			(db/create-tables))
 
 		(let [timestamp (helper/unix-epoch-seconds)
-			  reporter (report-metrics-to-console metric-registry )]
+			  reporter (report-metrics-to-console metrics/metric-registry)]
 			(.start reporter 300 TimeUnit/SECONDS)
 			(log/info "Batch process" timestamp)
 			(db/add-batch-record timestamp)
 			(run timestamp)
 			(let [elapsed (- (helper/unix-epoch-seconds) timestamp)
-				  num-updated (+ (.getCount inserted-chars-counter)
-								 (.getCount updated-chars-counter)
-								 (.getCount deleted-chars-counter))
-				  num-errors (.getCount errors-counter)]
+				  num-updated (+ (.getCount metrics/inserted-chars-counter)
+								 (.getCount metrics/updated-chars-counter)
+								 (.getCount metrics/deleted-chars-counter))
+				  num-errors (.getCount metrics/errors-counter)]
 				(db/update-batch-record timestamp elapsed 1 num-updated num-errors)
 				(.report reporter)
 				(log/info (str "Elapsed time: " elapsed " secs"))))

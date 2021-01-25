@@ -1,6 +1,7 @@
 (ns com.jkbff.budabot.pork
 	(:require [clojure.tools.logging :as log]
 			  [com.jkbff.budabot.helper :as helper]
+			  [com.jkbff.budabot.metrics :as metrics]
 			  [clojure.data.json :as json]
 			  [clj-http.client :as client]))
 
@@ -13,7 +14,11 @@
 								:retry-handler (fn [ex try-count http-context]
 												   (log/debug (str "attempt " try-count " for url '" url "'"))
 												   (Thread/sleep 1000)
-												   (if (> try-count 4) false true))}))
+												   (if (> try-count 4)
+													   (do
+														   (.inc metrics/retry-counter)
+														   false)
+													   true))}))
 		(catch Exception e (do (log/error e (str "error while retrieving url '" url "'"))))))
 
 (defn read-json
