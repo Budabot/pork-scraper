@@ -212,24 +212,26 @@
 
 (defn -main
 	[& args]
-	(log/info "Starting")
+	(try
+		(log/info "Starting")
 
-	(if (config/CREATE_TABLES)
-		(db/create-tables))
+		(if (config/CREATE_TABLES)
+			(db/create-tables))
 
-	(let [timestamp (helper/unix-epoch-seconds)
-		  reporter (report-metrics-to-console metric-registry )]
-		(.start reporter 300 TimeUnit/SECONDS)
-		(log/info "Batch process" timestamp)
-		(db/add-batch-record timestamp)
-		(run timestamp)
-		(let [elapsed (- (helper/unix-epoch-seconds) timestamp)
-			  num-updated (+ (.getCount inserted-chars-counter)
-							 (.getCount updated-chars-counter)
-							 (.getCount deleted-chars-counter))
-			  num-errors (.getCount errors-counter)]
-			(db/update-batch-record timestamp elapsed 1 num-updated num-errors)
-			(.report reporter)
-			(log/info (str "Elapsed time: " elapsed " secs"))))
+		(let [timestamp (helper/unix-epoch-seconds)
+			  reporter (report-metrics-to-console metric-registry )]
+			(.start reporter 300 TimeUnit/SECONDS)
+			(log/info "Batch process" timestamp)
+			(db/add-batch-record timestamp)
+			(run timestamp)
+			(let [elapsed (- (helper/unix-epoch-seconds) timestamp)
+				  num-updated (+ (.getCount inserted-chars-counter)
+								 (.getCount updated-chars-counter)
+								 (.getCount deleted-chars-counter))
+				  num-errors (.getCount errors-counter)]
+				(db/update-batch-record timestamp elapsed 1 num-updated num-errors)
+				(.report reporter)
+				(log/info (str "Elapsed time: " elapsed " secs"))))
 
-	(log/info "Finished"))
+		(log/info "Finished")
+		(catch Exception e (.printStackTrace e))))
