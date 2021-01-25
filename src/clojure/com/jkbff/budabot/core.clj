@@ -184,7 +184,7 @@
 		  orgs-chan (chan channel-buffer-size)
 
 		  load-pages-pool (thread/execute-in-pool (* thread-pool-factor 1) #(load-pages pages-chan))
-		  load-orgs-pool (thread/execute-in-pool (* thread-pool-factor 4)  #(load-org-details pages-chan orgs-chan))
+		  load-orgs-pool (thread/execute-in-pool (* thread-pool-factor 2)  #(load-org-details pages-chan orgs-chan))
 		  save-orgs-pool (thread/execute-in-pool (* thread-pool-factor 2) #(save-orgs-to-database orgs-chan timestamp))
 		  ]
 
@@ -200,7 +200,7 @@
 	(let [chars-chan (chan channel-buffer-size)
 
 		  load-chars-pool (thread/execute-in-pool (* thread-pool-factor 1) #(load-single-chars chars-chan timestamp))
-		  save-chars-pool (thread/execute-in-pool (* thread-pool-factor 9) #(save-single-chars chars-chan timestamp))]
+		  save-chars-pool (thread/execute-in-pool (* thread-pool-factor 3) #(save-single-chars chars-chan timestamp))]
 
 		(.awaitTermination load-chars-pool timeout-in-seconds TimeUnit/SECONDS)
 		(close! chars-chan)
