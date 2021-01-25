@@ -27,3 +27,4 @@
 (defn LETTERS [] (clojure.string/split (get-env-string "PORK_SCRAPER_LETTERS") #","))
 (defn SERVERS [] (clojure.string/split (get-env-string "PORK_SCRAPER_SERVERS") #","))
 (defn CREATE_TABLES [] (get-env-bool "PORK_SCRAPER_CREATE_TABLES"))
+(defn NUM_THREADS [] (get-env-int "PORK_SCRAPER_NUM_THREADS"))

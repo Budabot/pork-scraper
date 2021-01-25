@@ -15,7 +15,7 @@
 (def letters (config/LETTERS))
 (def dimensions (config/SERVERS))
 (def channel-buffer-size 100)
-(def thread-pool-factor 1)
+(def thread-pool-factor (config/NUM_THREADS))
 (def timeout-in-seconds 10000)
 
 (def compare-fields [:first_name :last_name :guild_rank_name :level :faction :profession :gender :breed
@@ -172,9 +172,9 @@
 	(let [pages-chan (chan 3)
 		  orgs-chan (chan channel-buffer-size)
 
-		  load-pages-pool (thread/execute-in-pool (* thread-pool-factor 1) #(load-pages pages-chan))
+		  load-pages-pool (thread/execute-in-pool 1 #(load-pages pages-chan))
 		  load-orgs-pool (thread/execute-in-pool (* thread-pool-factor 1)  #(load-org-details pages-chan orgs-chan))
-		  save-orgs-pool (thread/execute-in-pool (* thread-pool-factor 2) #(save-orgs-to-database orgs-chan timestamp))
+		  save-orgs-pool (thread/execute-in-pool 2 #(save-orgs-to-database orgs-chan timestamp))
 		  ]
 
 		(.awaitTermination load-pages-pool timeout-in-seconds TimeUnit/SECONDS)
@@ -189,7 +189,7 @@
 	(let [chars-chan (chan channel-buffer-size)
 
 		  load-chars-pool (thread/execute-in-pool (* thread-pool-factor 1) #(load-single-chars chars-chan timestamp))
-		  save-chars-pool (thread/execute-in-pool (* thread-pool-factor 2) #(save-single-chars chars-chan timestamp))]
+		  save-chars-pool (thread/execute-in-pool 2 #(save-single-chars chars-chan timestamp))]
 
 		(.awaitTermination load-chars-pool timeout-in-seconds TimeUnit/SECONDS)
 		(close! chars-chan)
