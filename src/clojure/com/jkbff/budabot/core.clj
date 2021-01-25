@@ -220,7 +220,10 @@
 				  num-errors (.getCount metrics/errors-counter)]
 				(db/update-batch-record timestamp elapsed 1 num-updated num-errors)
 				(.report reporter)
-				(log/info (str "Elapsed time: " elapsed " secs"))))
+				(log/info (str "Elapsed time: " elapsed " secs"))
+
+				; wait for report to log results
+				(Thread/sleep 5000)))
 
 		(log/info "Finished")
 		(catch Exception e (.printStackTrace e))))
