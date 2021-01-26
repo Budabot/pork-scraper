@@ -11,9 +11,7 @@
 (defn get-env-bool
 	[name]
 	(case (.toLowerCase (get-env-string name))
-		"0" false
 		"false" false
-		"1" true
 		"true" true))
 
 (defn DATABASE_TYPE [] (get-env-string "DATABASE_TYPE"))

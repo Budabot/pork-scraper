@@ -18,7 +18,7 @@
 (def thread-pool-factor (config/NUM_THREADS))
 (def timeout-in-seconds 10000)
 
-(def compare-fields [:first_name :last_name :guild_rank_name :level :faction :profession :gender :breed
+(def compare-fields [:char_id :first_name :last_name :guild_rank_name :level :faction :profession :gender :breed
 					 :defender_rank :guild_id :guild_name :deleted])
 
 (defn load-pages
@@ -56,22 +56,22 @@
 (defn normalize-org-member
 	[org-info member]
 	{:nickname (helper/trim-string (:name member))
-	 :char_id (:char-instance member)
+	 :char_id (:char_instance member)
 	 :first_name (helper/trim-string (:firstname member))
 	 :last_name (helper/trim-string (:lastname member))
 	 :guild_rank (:rank member)
-	 :guild_rank_name (helper/trim-string (:rank-title member))
+	 :guild_rank_name (helper/trim-string (:rank_title member))
 	 :level (:levelx member)
-	 :faction (helper/trim-string (:side-name org-info))
+	 :faction (helper/trim-string (:side_name org-info))
 	 :profession (helper/trim-string (:prof member))
-	 :profession_title (helper/trim-string (:prof-title member))
+	 :profession_title (helper/trim-string (:prof_title member))
 	 :gender (helper/trim-string (:sex member))
 	 :breed (helper/trim-string (:breed member))
 	 :defender_rank (:alienlevel member)
-	 :defender_rank_name (helper/trim-string (:defender-rank-title member))
-	 :guild_id (:org-instance org-info)
+	 :defender_rank_name (helper/trim-string (:defender_rank_title member))
+	 :guild_id (:org_instance org-info)
 	 :guild_name (:name org-info)
-	 :server (:char-dimension member)
+	 :server (:char_dimension member)
 	 :deleted 0})
 
 (defn normalize-single-member
@@ -80,11 +80,11 @@
 		char
 
 		{:nickname (helper/trim-string (:name char))
-		 :char_id (:char-instance char)
+		 :char_id (:char_instance char)
 		 :first_name (helper/trim-string (:firstname char))
 		 :last_name (helper/trim-string (:lastname char))
 		 :guild_rank (or (:rank org-info) 0)
-		 :guild_rank_name (helper/trim-string (:rank-title org-info))
+		 :guild_rank_name (helper/trim-string (:rank_title org-info))
 		 :level (:levelx char)
 		 :faction (helper/trim-string (:side char))
 		 :profession (helper/trim-string (:prof char))
@@ -92,11 +92,19 @@
 		 :gender (helper/trim-string (:sex char))
 		 :breed (helper/trim-string (:breed char))
 		 :defender_rank (:alienlevel char)
-		 :defender_rank_name (helper/trim-string (:rank-name char))
-		 :guild_id (or (:org-instance org-info) 0)
+		 :defender_rank_name (helper/trim-string (:rank_name char))
+		 :guild_id (or (:org_instance org-info) 0)
 		 :guild_name (or (:name org-info) "")
-		 :server (:char-dimension char)
+		 :server (:char_dimension char)
 		 :deleted 0}))
+
+(defn normalize-guild
+	[org-info]
+	{:guild_id (:org_instance org-info)
+	 :guild_name (:name org-info)
+	 :faction (:side_name org-info)
+	 :server (:org_dimension org-info)
+	 :deleted 0})
 
 (defn update-char-if-changed
 	[db-conn char timestamp]
@@ -128,6 +136,40 @@
 				(db/update-char db-conn current-char)
 				(.inc metrics/updated-chars-counter)))))
 
+(defn update-guild-if-changed
+	[db-conn org-info timestamp]
+	(let [guild-id (:guild_id org-info)
+				server (:server org-info)
+				db-org-info (db/get-guild db-conn guild-id server)
+				current-org-info (assoc org-info :last_checked timestamp :last_changed timestamp)]
+
+		(cond
+			; if db-char is nil, insert new record
+			(nil? db-org-info)
+			(do
+				(db/insert-guild db-conn current-org-info)
+				;(.inc metrics/inserted-chars-counter)
+				)
+
+			; if both are deleted, or both are the same, update last_checked only
+			(or (= 1 (:deleted current-org-info) (:deleted db-org-info))
+					(helper/compare-maps db-org-info current-org-info [:guild_name :faction :deleted]))
+			(db/update-last-checked-guild db-conn guild-id server timestamp)
+
+			; if current is deleted, mark as deleted in db
+			(= 1 (:deleted current-org-info))
+			(do
+				(db/delete-guild db-conn guild-id server timestamp)
+				;(.inc metrics/deleted-chars-counter)
+				)
+
+			; otherwise update existing record
+			:else
+			(do
+				(db/update-guild db-conn current-org-info)
+				;(.inc metrics/updated-chars-counter)
+				))))
+
 (defn save-orgs-to-database
 	[orgs-chan timestamp]
 	(loop [result (<!! orgs-chan)]
@@ -138,6 +180,7 @@
 				(.mark metrics/org-meter)
 				;(log/debug last-updated)
 				(j/with-db-connection [db-conn (db/get-db)]
+					(update-guild-if-changed db-conn (normalize-guild org-info) timestamp)
 					(doseq [member members]
 						(update-char-if-changed db-conn member timestamp)
 						(.mark metrics/org-char-meter)))
@@ -196,8 +239,9 @@
 
 		(.awaitTermination save-chars-pool timeout-in-seconds TimeUnit/SECONDS))
 
-	; update player_history table
-	(db/update-player-history timestamp))
+	; update player_history and guild_history tables
+	(db/update-player-history timestamp)
+	(db/update-guild-history timestamp))
 
 (defn -main
 	[& args]

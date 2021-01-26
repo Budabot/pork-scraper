@@ -23,7 +23,7 @@
 
 (defn read-json
 	[s]
-	(json/read-str s :key-fn #(helper/format-keys (clojure.string/lower-case %))))
+	(json/read-str s :key-fn helper/format-keys2))
 
 (defn get-listing-page
 	[letter dimension]

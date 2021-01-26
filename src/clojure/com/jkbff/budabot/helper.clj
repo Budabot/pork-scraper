@@ -27,6 +27,12 @@
 		  (str/replace x #"_" "-")
 		  (keyword x)))
 
+(defn format-keys2
+	[s]
+	(-> s
+			str/lower-case
+			keyword))
+
 (defn compare-maps
 	[m1 m2 ks]
 	(= (select-keys m1 ks) (select-keys m2 ks)))
