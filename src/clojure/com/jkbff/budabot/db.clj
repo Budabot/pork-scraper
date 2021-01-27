@@ -139,6 +139,6 @@
 (defn update-guild
 	[db-conn org-info]
 	(->
-		(j/update! db-conn :player (dissoc org-info :guild_id :server)
+		(j/update! db-conn :guild (dissoc org-info :guild_id :server)
 							 ["guild_id = ? AND server = ?" (:guild_id org-info) (:server org-info)])
 		require-single-update))
