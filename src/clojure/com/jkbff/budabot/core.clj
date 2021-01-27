@@ -241,7 +241,9 @@
 
 	; update player_history and guild_history tables
 	(db/update-player-history timestamp)
-	(db/update-guild-history timestamp))
+	(db/update-guild-history timestamp)
+	; guilds not updated should be marked as deleted
+	)
 
 (defn -main
 	[& args]

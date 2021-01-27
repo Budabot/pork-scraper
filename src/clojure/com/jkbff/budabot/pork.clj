@@ -19,7 +19,7 @@
 														   (.inc metrics/retry-counter)
 														   false)
 													   true))}))
-		(catch Exception e (do (log/error e (str "error while retrieving url '" url "'"))))))
+		(catch Exception e (log/error e (str "error while retrieving url '" url "'")))))
 
 (defn read-json
 	[s]

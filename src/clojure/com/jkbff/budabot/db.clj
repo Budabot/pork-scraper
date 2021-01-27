@@ -1,7 +1,8 @@
 (ns com.jkbff.budabot.db
 	(:require [com.jkbff.budabot.config :as config]
 			  [com.jkbff.budabot.helper :as helper]
-			  [clojure.java.jdbc :as j]))
+			  [clojure.java.jdbc :as j]
+			  [clojure.tools.logging :as log]))
 
 
 (defn get-db
@@ -52,24 +53,26 @@
 
 (defn add-batch-record
 	[timestamp]
-	(j/insert! (get-db) :batch_history {:dt timestamp :elapsed 0 :success 0 :updates 0 :errors 0}))
+	(j/insert! (get-db) :batch_history
+			   {:dt timestamp :elapsed 0 :success 0 :updates 0 :errors 0}))
 
 (defn update-batch-record
 	[timestamp elapsed success updates errors]
 	(->
-		(j/update! (get-db) :batch_history {:elapsed elapsed :success success :updates updates :errors errors}
-							 ["dt = ?", timestamp])
+		(j/update! (get-db) :batch_history
+				   {:elapsed elapsed :success success :updates updates :errors errors}
+				   ["dt = ?", timestamp])
 		require-single-update))
 
 (defn update-player-history
 	[timestamp]
 	(j/execute! (get-db) ["INSERT INTO player_history SELECT * FROM player WHERE last_changed = ?"
-												timestamp]))
+						  timestamp]))
 
 (defn update-guild-history
 	[timestamp]
 	(j/execute! (get-db) ["INSERT INTO guild_history SELECT * FROM guild WHERE last_changed = ?"
-												timestamp]))
+						  timestamp]))
 
 ; player
 
@@ -77,33 +80,44 @@
 	[db-conn name server]
 	(->
 		(j/query db-conn ["SELECT * FROM player WHERE nickname = ? AND server = ?"
-						   name server])
+						  name server])
 		extract-single-result))
 
 (defn insert-char
 	[db-conn char]
-	(j/insert! db-conn :player char))
+	(try
+		(j/insert! db-conn :player char)
+		(catch Exception e (log/error e char))))
 
 (defn update-char
 	[db-conn char]
-	(->
-		(j/update! db-conn :player (dissoc char :nickname :server)
-				   ["nickname = ? AND server = ?" (:nickname char) (:server char)])
-		require-single-update))
+	(try
+		(->
+			(j/update! db-conn :player
+					   (dissoc char :nickname :server)
+					   ["nickname = ? AND server = ?" (:nickname char) (:server char)])
+			require-single-update)
+		(catch Exception e (log/error e char))))
 
 (defn delete-char
 	[db-conn name server timestamp]
-	(->
-		(j/update! db-conn :player {:last_checked timestamp :last_changed timestamp :deleted 1}
-				   ["nickname = ? AND server = ?" name server])
-		require-single-update))
+	(try
+		(->
+			(j/update! db-conn :player
+					   {:last_checked timestamp :last_changed timestamp :deleted 1}
+					   ["nickname = ? AND server = ?" name server])
+			require-single-update)
+		(catch Exception e (log/error e name server timestamp))))
 
 (defn update-last-checked
 	[db-conn name server timestamp]
-	(->
-		(j/update! db-conn :player {:last_checked timestamp}
-				   ["nickname = ? AND server = ?" name server])
-		require-single-update))
+	(try
+		(->
+			(j/update! db-conn :player
+					   {:last_checked timestamp}
+					   ["nickname = ? AND server = ?" name server])
+			require-single-update)
+		(catch Exception e (log/error e name server timestamp))))
 
 (defn get-unchecked-chars
 	[timestamp]
@@ -113,32 +127,45 @@
 
 (defn get-guild
 	[db-conn guild-id server]
-	(->
-		(j/query db-conn ["SELECT * FROM guild WHERE guild_id = ? AND server = ?"
-											guild-id server])
-		extract-single-result))
+	(try
+		(->
+			(j/query db-conn ["SELECT * FROM guild WHERE guild_id = ? AND server = ?"
+							  guild-id server])
+			extract-single-result)
+		(catch Exception e (log/error e guild-id server))))
 
 (defn insert-guild
 	[db-conn org-info]
-	(j/insert! db-conn :guild org-info))
+	(try
+		(j/insert! db-conn :guild org-info)
+		(catch Exception e (log/error e org-info))))
 
 (defn update-last-checked-guild
 	[db-conn guild-id server timestamp]
-	(->
-		(j/update! db-conn :guild {:last_checked timestamp}
-							 ["guild_id = ? AND server = ?" guild-id server])
-		require-single-update))
+	(try
+		(->
+			(j/update! db-conn :guild
+					   {:last_checked timestamp}
+					   ["guild_id = ? AND server = ?" guild-id server])
+			require-single-update)
+		(catch Exception e (log/error e guild-id server timestamp))))
 
 (defn delete-guild
 	[db-conn guild-id server timestamp]
-	(->
-		(j/update! db-conn :guild {:last_checked timestamp :last_changed timestamp :deleted 1}
-							 ["guild_id = ? AND server = ?" guild-id server])
-		require-single-update))
+	(try
+		(->
+			(j/update! db-conn :guild
+					   {:last_checked timestamp :last_changed timestamp :deleted 1}
+					   ["guild_id = ? AND server = ?" guild-id server])
+			require-single-update)
+		(catch Exception e (log/error e guild-id server timestamp))))
 
 (defn update-guild
 	[db-conn org-info]
-	(->
-		(j/update! db-conn :guild (dissoc org-info :guild_id :server)
-							 ["guild_id = ? AND server = ?" (:guild_id org-info) (:server org-info)])
-		require-single-update))
+	(try
+		(->
+			(j/update! db-conn :guild
+					   (dissoc org-info :guild_id :server)
+					   ["guild_id = ? AND server = ?" (:guild_id org-info) (:server org-info)])
+			require-single-update)
+		(catch Exception e (log/error e org-info))))
