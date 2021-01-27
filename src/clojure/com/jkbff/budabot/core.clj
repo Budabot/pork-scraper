@@ -254,8 +254,12 @@
 			(db/create-tables))
 
 		(let [timestamp (helper/unix-epoch-seconds)
-			  reporter (report-metrics-to-console metrics/metric-registry)]
-			(.start reporter 300 TimeUnit/SECONDS)
+			  reporter (report-metrics-to-console metrics/metric-registry)
+			  console-reporter-interval (config/CONSOLE_REPORTER_INTERVAL)]
+
+			(if (> console-reporter-interval 0)
+				(.start reporter console-reporter-interval TimeUnit/SECONDS))
+
 			(log/info "Batch process" timestamp)
 			(db/add-batch-record timestamp)
 			(run timestamp)
