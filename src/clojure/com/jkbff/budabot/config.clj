@@ -17,6 +17,7 @@
 (defn DATABASE_TYPE [] (get-env-string "DATABASE_TYPE"))
 (defn DATABASE_NAME [] (get-env-string "DATABASE_NAME"))
 (defn DATABASE_HOST [] (get-env-string "DATABASE_HOST"))
+(defn DATABASE_PORT [] (get-env-string "DATABASE_PORT"))
 (defn DATABASE_USERNAME [] (get-env-string "DATABASE_USERNAME"))
 (defn DATABASE_PASSWORD [] (get-env-string "DATABASE_PASSWORD"))
 

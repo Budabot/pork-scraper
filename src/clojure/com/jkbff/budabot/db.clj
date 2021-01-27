@@ -7,10 +7,11 @@
 (defn get-db
 	[]
 	{:dbtype   (config/DATABASE_TYPE)
-	 :dbname   (config/DATABASE_NAME)
-	 :user     (config/DATABASE_USERNAME)
 	 :host     (config/DATABASE_HOST)
-	 :password (config/DATABASE_PASSWORD)})
+	 :port     (config/DATABASE_PORT)
+	 :user     (config/DATABASE_USERNAME)
+	 :password (config/DATABASE_PASSWORD)
+	 :dbname   (config/DATABASE_NAME)})
 
 (defn extract-single-result
 	[result]
