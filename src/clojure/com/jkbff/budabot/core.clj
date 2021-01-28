@@ -178,7 +178,7 @@
 		(if result
 			(let [[org-info members last-updated] result
 				  members (map #(normalize-org-member org-info %) members)]
-				(.dec metrics/orgs-chan-counter)
+				(.dec metrics/orgs-detail-chan-counter)
 				(.mark metrics/org-meter)
 				;(log/debug last-updated)
 				(j/with-db-connection [db-conn (db/get-db)]
