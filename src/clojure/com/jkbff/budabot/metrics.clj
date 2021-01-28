@@ -11,5 +11,5 @@
 (def retry-counter (.counter metric-registry "retry"))
 (def ^Counter errors-counter (.counter metric-registry "errors"))
 
-(def pages-chan-counter (.counter metric-registry "pages-chan-items"))
 (def orgs-chan-counter (.counter metric-registry "orgs-chan-items"))
+(def orgs-detail-chan-counter (.counter metric-registry "orgs-detail-chan-items"))

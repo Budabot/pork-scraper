@@ -20,28 +20,31 @@
 					 :defender_rank :guild_id :guild_name :deleted])
 
 (defn load-pages
-	[pages-chan dimensions letters]
+	[orgs-chan dimensions letters]
 	(doseq [dimension dimensions
 			letter letters]
 		(try
-			(>!! pages-chan (pork/get-listing-page letter dimension))
-			(.inc metrics/pages-chan-counter)
+			(let [page (pork/get-listing-page letter dimension)]
+				(doseq [output (pork/parse-orgs-from-page page)]
+					(>!! orgs-chan output)
+					(.inc metrics/orgs-chan-counter)))
 			(catch Exception e (do (log/error e)
 								   (.inc metrics/errors-counter))))))
 
 (defn load-org-details
-	[pages-chan orgs-chan]
-	(loop [page (<!! pages-chan)]
-		(if page
+	[orgs-chan orgs-detail-chan]
+	(loop [org-info (<!! orgs-chan)]
+		(if-let [[dimension id name] org-info]
 			(do
-				(.dec metrics/pages-chan-counter)
+				(.dec metrics/orgs-chan-counter)
 				(try
-					(doseq [output (map (fn [[dimension id name]] (pork/get-org-details id dimension)) (pork/parse-orgs-from-page page))]
-						(>!! orgs-chan output)
-						(.inc metrics/orgs-chan-counter))
+					(let [output (pork/get-org-details id dimension)]
+						; check for deleted org?
+						(>!! orgs-detail-chan output)
+						(.inc metrics/orgs-detail-chan-counter))
 					(catch Exception e (do (log/error e "")
 										   (.inc metrics/errors-counter))))
-				(recur (<!! pages-chan))))))
+				(recur (<!! orgs-chan))))))
 
 (defn ^ConsoleReporter report-metrics-to-console
 	[metric-registry]
@@ -211,26 +214,26 @@
 	[timestamp]
 
 	; update players on org rosters
-	(let [pages-chan (chan 3)
-		  orgs-chan (chan channel-buffer-size)
+	(let [orgs-chan (chan 3)
+		  org-details-chan (chan channel-buffer-size)
 
-		  load-pages-pool (thread/execute-in-pool 1 #(load-pages pages-chan (config/SERVERS) (config/LETTERS)))
-		  load-orgs-pool (thread/execute-in-pool (* thread-pool-factor 1)  #(load-org-details pages-chan orgs-chan))
-		  save-orgs-pool (thread/execute-in-pool 2 #(save-orgs-to-database orgs-chan timestamp))
+		  load-pages-pool (thread/execute-in-pool 1 #(load-pages orgs-chan (config/SERVERS) (config/LETTERS)))
+		  load-orgs-pool (thread/execute-in-pool (* thread-pool-factor 1)  #(load-org-details orgs-chan org-details-chan))
+		  save-orgs-pool (thread/execute-in-pool 2 #(save-orgs-to-database org-details-chan timestamp))
 		  ]
 
 		(.awaitTermination load-pages-pool timeout-in-seconds TimeUnit/SECONDS)
-		(close! pages-chan)
+		(close! orgs-chan)
 
 		(.awaitTermination load-orgs-pool timeout-in-seconds TimeUnit/SECONDS)
-		(close! orgs-chan)
+		(close! org-details-chan)
 
 		(.awaitTermination save-orgs-pool timeout-in-seconds TimeUnit/SECONDS))
 
 	; update players not on org rosters
 	(let [chars-chan (chan channel-buffer-size)
 
-		  load-chars-pool (thread/execute-in-pool (* thread-pool-factor 3) #(load-single-chars chars-chan timestamp))
+		  load-chars-pool (thread/execute-in-pool (* thread-pool-factor 2) #(load-single-chars chars-chan timestamp))
 		  save-chars-pool (thread/execute-in-pool 2 #(save-single-chars chars-chan timestamp))]
 
 		(.awaitTermination load-chars-pool timeout-in-seconds TimeUnit/SECONDS)
