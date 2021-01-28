@@ -275,6 +275,8 @@
 				(.report reporter)
 				(log/info (str "Elapsed time: " elapsed " secs"))
 
+				(clj-http.conn-mgr/shutdown-manager pork/cm)
+
 				; wait for report to log results
 				(Thread/sleep 5000)))
 

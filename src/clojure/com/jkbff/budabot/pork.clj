@@ -3,13 +3,18 @@
 			  [com.jkbff.budabot.helper :as helper]
 			  [com.jkbff.budabot.metrics :as metrics]
 			  [clojure.data.json :as json]
-			  [clj-http.client :as client]))
+			  [clj-http.client :as client]
+			  [com.jkbff.budabot.config :as config]))
+
+(def thread-factor (* 2 (config/NUM_THREADS)))
+(def cm (clj-http.conn-mgr/make-reusable-conn-manager {:timeout 2 :threads thread-factor :default-per-route thread-factor}))
 
 (defn request-url
 	[url]
 	(log/debug "requesting" url)
 	(try
-		(:body (client/get url {:socket-timeout 10000
+		(:body (client/get url {:connection-manager cm
+								:socket-timeout 10000
 								:connection-timeout 10000
 								:retry-handler (fn [ex try-count http-context]
 												   (log/debug (str "attempt " try-count " for url '" url "'"))
