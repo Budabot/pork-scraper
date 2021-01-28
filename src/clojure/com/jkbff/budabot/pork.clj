@@ -13,8 +13,8 @@
 								:connection-timeout 10000
 								:retry-handler (fn [ex try-count http-context]
 												   (log/debug (str "attempt " try-count " for url '" url "'"))
-												   ;(Thread/sleep 1000)
-												   (if (> try-count 4)
+												   (Thread/sleep 50)
+												   (if (> try-count 10)
 													   false
 													   (do
 														   (.inc metrics/retry-counter)
