@@ -19,33 +19,6 @@
 (def compare-fields [:char_id :first_name :last_name :guild_rank_name :level :faction :profession :gender :breed
 					 :defender_rank :guild_id :guild_name :deleted])
 
-(defn load-pages
-	[orgs-chan dimensions letters]
-	(doseq [dimension dimensions
-			letter letters]
-		(try
-			(let [page (pork/get-listing-page letter dimension)]
-				(doseq [output (pork/parse-orgs-from-page page)]
-					(>!! orgs-chan output)
-					(.inc metrics/orgs-chan-counter)))
-			(catch Exception e (do (log/error e)
-								   (.inc metrics/errors-counter))))))
-
-(defn load-org-details
-	[orgs-chan orgs-detail-chan]
-	(loop [org-info (<!! orgs-chan)]
-		(if-let [[dimension id name] org-info]
-			(do
-				(.dec metrics/orgs-chan-counter)
-				(try
-					(let [output (pork/get-org-details id dimension)]
-						; check for deleted org?
-						(>!! orgs-detail-chan output)
-						(.inc metrics/orgs-detail-chan-counter))
-					(catch Exception e (do (log/error e "")
-										   (.inc metrics/errors-counter))))
-				(recur (<!! orgs-chan))))))
-
 (defn ^ConsoleReporter report-metrics-to-console
 	[metric-registry]
 	(->
@@ -108,10 +81,10 @@
 	 :deleted 0})
 
 (defn update-char-if-changed
-	[db-conn char timestamp]
+	[db-conn db-char char timestamp]
 	(let [name (:nickname char)
 		  server (:server char)
-		  db-char (db/get-char db-conn name server)
+		  db-char (or db-char (db/get-char db-conn name server))
 		  current-char (assoc char :last_checked timestamp :last_changed timestamp)]
 
 		(cond
@@ -172,6 +145,33 @@
 				;(.inc metrics/updated-chars-counter)
 				))))
 
+(defn load-pages
+	[orgs-chan dimensions letters]
+	(doseq [dimension dimensions
+			letter letters]
+		(try
+			(let [page (pork/get-listing-page letter dimension)]
+				(doseq [output (pork/parse-orgs-from-page page)]
+					(>!! orgs-chan output)
+					(.inc metrics/orgs-chan-counter)))
+			(catch Exception e (do (log/error e)
+								   (.inc metrics/errors-counter))))))
+
+(defn load-org-details
+	[orgs-chan orgs-detail-chan]
+	(loop [org-info (<!! orgs-chan)]
+		(if-let [[dimension id name] org-info]
+			(do
+				(.dec metrics/orgs-chan-counter)
+				(try
+					(let [output (pork/get-org-details id dimension)]
+						; check for deleted org?
+						(>!! orgs-detail-chan output)
+						(.inc metrics/orgs-detail-chan-counter))
+					(catch Exception e (do (log/error e "")
+										   (.inc metrics/errors-counter))))
+				(recur (<!! orgs-chan))))))
+
 (defn save-orgs-to-database
 	[orgs-chan timestamp]
 	(loop [result (<!! orgs-chan)]
@@ -184,32 +184,38 @@
 				(j/with-db-connection [db-conn (db/get-db)]
 					(update-guild-if-changed db-conn (normalize-guild org-info) timestamp)
 					(doseq [member members]
-						(update-char-if-changed db-conn member timestamp)
+						(update-char-if-changed db-conn nil member timestamp)
 						(.mark metrics/org-char-meter)))
 				(recur (<!! orgs-chan))))))
 
-(defn load-single-chars
+(defn get-single-chars
 	[chars-chan servers timestamp]
 	(doseq [server servers
 			char (db/get-unchecked-chars timestamp server 0)]
-		(try
-			(let [result (pork/get-char-details (:nickname char) (:server char))]
-				(if (nil? result)
-					(>!! chars-chan [{:nickname (:nickname char) :server (:server char) :deleted 1} nil nil])
-					(>!! chars-chan result)))
-			(catch Exception e (do (log/error e)
-								   (.inc metrics/errors-counter))))))
+		(>!! chars-chan char)))
+
+(defn load-single-chars
+	[chars-chan char-details-chan]
+	(loop [db-char-info (<!! chars-chan)]
+		(if db-char-info
+			(do
+				(try
+					(if-let [[char-info org-info last-update] (pork/get-char-details (:nickname db-char-info) (:server db-char-info))]
+							(>!! char-details-chan [db-char-info (normalize-single-member org-info char-info)])
+							(>!! char-details-chan [db-char-info {:nickname (:nickname db-char-info) :server (:server db-char-info) :deleted 1}]))
+					(catch Exception e (do (log/error e "")
+										   (.inc metrics/errors-counter))))
+				(recur (<!! chars-chan))))))
 
 (defn save-single-chars
-	[chars-chan timestamp]
+	[char-details-chan timestamp]
 	(j/with-db-connection [db-conn (db/get-db)]
-		(loop [result (<!! chars-chan)]
-			(if result
-				(let [[char org-info last-update] result
-					  normalized-char (normalize-single-member org-info char)]
-					(update-char-if-changed db-conn normalized-char timestamp)
+		(loop [result (<!! char-details-chan)]
+			(if-let [[db-char-info char-info] result]
+				(do
+					(update-char-if-changed db-conn db-char-info char-info timestamp)
 					(.mark metrics/unorged-char-meter)
-					(recur (<!! chars-chan)))))))
+					(recur (<!! char-details-chan)))))))
 
 (defn run
 	[timestamp]
@@ -235,12 +241,17 @@
 
 	; update players not on org rosters
 	(let [chars-chan (chan channel-buffer-size)
+		  char-details-chan (chan channel-buffer-size)
 
-		  load-chars-pool (thread/execute-in-pool (* thread-pool-factor 2) #(load-single-chars chars-chan (config/SERVERS) timestamp))
-		  save-chars-pool (thread/execute-in-pool (* thread-pool-factor 2) #(save-single-chars chars-chan timestamp))]
+		  get-chars-pool (thread/execute-in-pool 1 #(get-single-chars chars-chan (config/SERVERS) timestamp))
+		  load-chars-pool (thread/execute-in-pool (* thread-pool-factor 2) #(load-single-chars chars-chan char-details-chan))
+		  save-chars-pool (thread/execute-in-pool (* thread-pool-factor 2) #(save-single-chars char-details-chan timestamp))]
+
+		(.awaitTermination get-chars-pool timeout-in-seconds TimeUnit/SECONDS)
+		(close! chars-chan)
 
 		(.awaitTermination load-chars-pool timeout-in-seconds TimeUnit/SECONDS)
-		(close! chars-chan)
+		(close! char-details-chan)
 
 		(.awaitTermination save-chars-pool timeout-in-seconds TimeUnit/SECONDS))
 
