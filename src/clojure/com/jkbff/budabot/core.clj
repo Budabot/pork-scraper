@@ -12,8 +12,6 @@
 			 (com.codahale.metrics ConsoleReporter)))
 
 
-(def letters (config/LETTERS))
-(def dimensions (config/SERVERS))
 (def channel-buffer-size 100)
 (def thread-pool-factor (config/NUM_THREADS))
 (def timeout-in-seconds 10000)
@@ -22,7 +20,7 @@
 					 :defender_rank :guild_id :guild_name :deleted])
 
 (defn load-pages
-	[pages-chan]
+	[pages-chan dimensions letters]
 	(doseq [dimension dimensions
 			letter letters]
 		(try
@@ -121,7 +119,8 @@
 				(.inc metrics/inserted-chars-counter))
 
 			; if both are deleted, or both are the same, update last_checked only
-			(or (= 1 (:deleted current-char) (:deleted db-char)) (helper/compare-maps db-char current-char compare-fields))
+			(or (= 1 (:deleted current-char) (:deleted db-char))
+				(helper/compare-maps db-char current-char compare-fields))
 			(db/update-last-checked db-conn name server timestamp)
 
 			; if current is deleted, mark as deleted in db
@@ -195,8 +194,7 @@
 					(>!! chars-chan [{:nickname (:nickname char) :server (:server char) :deleted 1} nil nil])
 					(>!! chars-chan result)))
 			(catch Exception e (do (log/error e)
-								   (.inc metrics/errors-counter))))
-		(.mark metrics/unchecked-char-meter)))
+								   (.inc metrics/errors-counter))))))
 
 (defn save-single-chars
 	[chars-chan timestamp]
@@ -206,6 +204,7 @@
 				(let [[char org-info last-update] result
 					  normalized-char (normalize-single-member org-info char)]
 					(update-char-if-changed db-conn normalized-char timestamp)
+					(.mark metrics/unorged-char-meter)
 					(recur (<!! chars-chan)))))))
 
 (defn run
@@ -215,7 +214,7 @@
 	(let [pages-chan (chan 3)
 		  orgs-chan (chan channel-buffer-size)
 
-		  load-pages-pool (thread/execute-in-pool 1 #(load-pages pages-chan))
+		  load-pages-pool (thread/execute-in-pool 1 #(load-pages pages-chan (config/SERVERS) (config/LETTERS)))
 		  load-orgs-pool (thread/execute-in-pool (* thread-pool-factor 1)  #(load-org-details pages-chan orgs-chan))
 		  save-orgs-pool (thread/execute-in-pool 2 #(save-orgs-to-database orgs-chan timestamp))
 		  ]
@@ -231,7 +230,7 @@
 	; update players not on org rosters
 	(let [chars-chan (chan channel-buffer-size)
 
-		  load-chars-pool (thread/execute-in-pool (* thread-pool-factor 1) #(load-single-chars chars-chan timestamp))
+		  load-chars-pool (thread/execute-in-pool (* thread-pool-factor 3) #(load-single-chars chars-chan timestamp))
 		  save-chars-pool (thread/execute-in-pool 2 #(save-single-chars chars-chan timestamp))]
 
 		(.awaitTermination load-chars-pool timeout-in-seconds TimeUnit/SECONDS)

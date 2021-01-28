@@ -4,7 +4,7 @@
 (def metric-registry (MetricRegistry.))
 (def org-meter (.meter metric-registry "orgs"))
 (def org-char-meter (.meter metric-registry "org-characters"))
-(def unchecked-char-meter (.meter metric-registry "unorged-characters"))
+(def unorged-char-meter (.meter metric-registry "unorged-characters"))
 (def inserted-chars-counter (.counter metric-registry "inserted"))
 (def updated-chars-counter (.counter metric-registry "updated"))
 (def deleted-chars-counter (.counter metric-registry "deleted"))
