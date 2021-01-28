@@ -12,7 +12,7 @@
 			 (com.codahale.metrics ConsoleReporter)))
 
 
-(def channel-buffer-size 100)
+(def channel-buffer-size 50)
 (def thread-pool-factor (config/NUM_THREADS))
 (def timeout-in-seconds 10000)
 
@@ -220,8 +220,10 @@
 
 		  load-pages-pool (thread/execute-in-pool 1 #(load-pages orgs-chan (config/SERVERS) (config/LETTERS)))
 		  load-orgs-pool (thread/execute-in-pool (* thread-pool-factor 1)  #(load-org-details orgs-chan org-details-chan))
-		  save-orgs-pool (thread/execute-in-pool 2 #(save-orgs-to-database org-details-chan timestamp))
+		  save-orgs-pool (thread/execute-in-pool (* thread-pool-factor 2) #(save-orgs-to-database org-details-chan timestamp))
 		  ]
+
+		; TODO if adding to channel fails, end task
 
 		(.awaitTermination load-pages-pool timeout-in-seconds TimeUnit/SECONDS)
 		(close! orgs-chan)
@@ -235,7 +237,7 @@
 	(let [chars-chan (chan channel-buffer-size)
 
 		  load-chars-pool (thread/execute-in-pool (* thread-pool-factor 2) #(load-single-chars chars-chan (config/SERVERS) timestamp))
-		  save-chars-pool (thread/execute-in-pool 2 #(save-single-chars chars-chan timestamp))]
+		  save-chars-pool (thread/execute-in-pool (* thread-pool-factor 2) #(save-single-chars chars-chan timestamp))]
 
 		(.awaitTermination load-chars-pool timeout-in-seconds TimeUnit/SECONDS)
 		(close! chars-chan)
