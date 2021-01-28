@@ -120,8 +120,9 @@
 		(catch Exception e (log/error e name server timestamp))))
 
 (defn get-unchecked-chars
-	[timestamp]
-	(j/query (get-db) ["SELECT * FROM player WHERE last_checked != ?" timestamp]))
+	[timestamp server deleted]
+	(j/query (get-db) ["SELECT * FROM player WHERE last_checked != ? AND server = ? AND deleted = ?"
+					   timestamp server deleted]))
 
 ;guild
 

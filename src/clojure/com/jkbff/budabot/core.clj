@@ -189,8 +189,9 @@
 				(recur (<!! orgs-chan))))))
 
 (defn load-single-chars
-	[chars-chan timestamp]
-	(doseq [char (db/get-unchecked-chars timestamp)]
+	[chars-chan servers timestamp]
+	(doseq [server servers
+			char (db/get-unchecked-chars timestamp server 0)]
 		(try
 			(let [result (pork/get-char-details (:nickname char) (:server char))]
 				(if (nil? result)
@@ -214,7 +215,7 @@
 	[timestamp]
 
 	; update players on org rosters
-	(let [orgs-chan (chan 3)
+	(let [orgs-chan (chan channel-buffer-size)
 		  org-details-chan (chan channel-buffer-size)
 
 		  load-pages-pool (thread/execute-in-pool 1 #(load-pages orgs-chan (config/SERVERS) (config/LETTERS)))
@@ -233,7 +234,7 @@
 	; update players not on org rosters
 	(let [chars-chan (chan channel-buffer-size)
 
-		  load-chars-pool (thread/execute-in-pool (* thread-pool-factor 2) #(load-single-chars chars-chan timestamp))
+		  load-chars-pool (thread/execute-in-pool (* thread-pool-factor 2) #(load-single-chars chars-chan (config/SERVERS) timestamp))
 		  save-chars-pool (thread/execute-in-pool 2 #(save-single-chars chars-chan timestamp))]
 
 		(.awaitTermination load-chars-pool timeout-in-seconds TimeUnit/SECONDS)
