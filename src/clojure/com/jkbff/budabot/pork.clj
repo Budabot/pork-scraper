@@ -15,10 +15,10 @@
 												   (log/debug (str "attempt " try-count " for url '" url "'"))
 												   ;(Thread/sleep 1000)
 												   (if (> try-count 4)
+													   false
 													   (do
 														   (.inc metrics/retry-counter)
-														   false)
-													   true))}))
+														   true)))}))
 		(catch Exception e (log/error e (str "error while retrieving url '" url "'")))))
 
 (defn read-json
