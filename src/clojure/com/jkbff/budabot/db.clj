@@ -54,13 +54,14 @@
 (defn add-batch-record
 	[timestamp]
 	(j/insert! (get-db) :batch_history
-			   {:dt timestamp :elapsed 0 :success 0 :updates 0 :errors 0}))
+			   {:dt timestamp :elapsed 0 :success 0 :orgs 0 :orged_chars 0
+				:unorged_chars 0 :inserted 0 :updated 0 :deleted 0 :errors 0}))
 
 (defn update-batch-record
-	[timestamp elapsed success updates errors]
+	[timestamp batch-record]
 	(->
 		(j/update! (get-db) :batch_history
-				   {:elapsed elapsed :success success :updates updates :errors errors}
+				   batch-record
 				   ["dt = ?", timestamp])
 		require-single-update))
 

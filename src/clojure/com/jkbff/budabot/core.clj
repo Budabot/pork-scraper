@@ -279,19 +279,23 @@
 			(log/info "Batch process" timestamp)
 			(db/add-batch-record timestamp)
 			(run timestamp)
-			(let [elapsed (- (helper/unix-epoch-seconds) timestamp)
-				  num-updated (+ (.getCount metrics/inserted-chars-counter)
-								 (.getCount metrics/updated-chars-counter)
-								 (.getCount metrics/deleted-chars-counter))
-				  num-errors (.getCount metrics/errors-counter)]
-				(db/update-batch-record timestamp elapsed 1 num-updated num-errors)
+			(let [elapsed (- (helper/unix-epoch-seconds) timestamp)]
+				(db/update-batch-record timestamp {:elapsed elapsed
+												   :success 1
+												   :orgs (.getCount metrics/org-meter)
+												   :orged_chars (.getCount metrics/org-char-meter)
+												   :unorged_chars (.getCount metrics/unorged-char-meter)
+												   :inserted (.getCount metrics/inserted-chars-counter)
+												   :updated (.getCount metrics/updated-chars-counter)
+												   :deleted (.getCount metrics/deleted-chars-counter)
+												   :errors (.getCount metrics/errors-counter)})
 				(.report reporter)
 				(log/info (str "Elapsed time: " elapsed " secs"))
 
 				(clj-http.conn-mgr/shutdown-manager pork/cm)
 
 				; wait for report to log results
-				(Thread/sleep 5000)))
+				(Thread/sleep 3000)))
 
 		(log/info "Finished")
 		(catch Exception e (.printStackTrace e))))

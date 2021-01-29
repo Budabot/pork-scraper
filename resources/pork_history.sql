@@ -87,6 +87,11 @@ CREATE TABLE batch_history (
 	dt INT NOT NULL,
 	elapsed INT NOT NULL,
 	success SMALLINT NOT NULL,
-	updates INT NOT NULL,
+	orgs INT NOT NULL,
+	orged_chars INT NOT NULL,
+	unorged_chars INT NOT NULL,
+	inserted INT NOT NULL,
+	updated INT NOT NULL,
+	deleted INT NOT NULL,
 	errors INT NOT NULL
 );
