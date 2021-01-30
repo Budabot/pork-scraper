@@ -90,7 +90,7 @@ CREATE TABLE batch_history (
 	orgs INT NOT NULL,
 	orged_chars INT NOT NULL,
 	unorged_chars INT NOT NULL,
-	inserted INT NOT NULL,
+	added INT NOT NULL,
 	updated INT NOT NULL,
 	deleted INT NOT NULL,
 	errors INT NOT NULL

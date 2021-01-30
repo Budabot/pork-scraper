@@ -114,9 +114,9 @@
 (defn update-guild-if-changed
 	[db-conn org-info timestamp]
 	(let [guild-id (:guild_id org-info)
-				server (:server org-info)
-				db-org-info (db/get-guild db-conn guild-id server)
-				current-org-info (assoc org-info :last_checked timestamp :last_changed timestamp)]
+		  server (:server org-info)
+		  db-org-info (db/get-guild db-conn guild-id server)
+		  current-org-info (assoc org-info :last_checked timestamp :last_changed timestamp)]
 
 		(cond
 			; if db-char is nil, insert new record
@@ -128,7 +128,7 @@
 
 			; if both are deleted, or both are the same, update last_checked only
 			(or (= 1 (:deleted current-org-info) (:deleted db-org-info))
-					(helper/compare-maps db-org-info current-org-info [:guild_name :faction :deleted]))
+				(helper/compare-maps db-org-info current-org-info [:guild_name :faction :deleted]))
 			(db/update-last-checked-guild db-conn guild-id server timestamp)
 
 			; if current is deleted, mark as deleted in db
@@ -285,7 +285,7 @@
 												   :orgs (.getCount metrics/org-meter)
 												   :orged_chars (.getCount metrics/org-char-meter)
 												   :unorged_chars (.getCount metrics/unorged-char-meter)
-												   :inserted (.getCount metrics/inserted-chars-counter)
+												   :added (.getCount metrics/inserted-chars-counter)
 												   :updated (.getCount metrics/updated-chars-counter)
 												   :deleted (.getCount metrics/deleted-chars-counter)
 												   :errors (.getCount metrics/errors-counter)})
