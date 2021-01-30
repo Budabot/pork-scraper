@@ -54,7 +54,7 @@
 (defn add-batch-record
 	[timestamp]
 	(j/insert! (get-db) :batch_history
-			   {:dt timestamp :elapsed 0 :success 0 :orgs 0 :orged_chars 0
+			   {:dt timestamp :duration 0 :success 0 :orgs 0 :orged_chars 0
 				:unorged_chars 0 :inserted 0 :updated 0 :deleted 0 :errors 0}))
 
 (defn update-batch-record

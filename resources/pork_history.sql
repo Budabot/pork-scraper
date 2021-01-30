@@ -85,7 +85,7 @@ CREATE TABLE history_requests (
 DROP TABLE IF EXISTS batch_history;
 CREATE TABLE batch_history (
 	dt INT NOT NULL,
-	elapsed INT NOT NULL,
+	duration INT NOT NULL,
 	success SMALLINT NOT NULL,
 	orgs INT NOT NULL,
 	orged_chars INT NOT NULL,

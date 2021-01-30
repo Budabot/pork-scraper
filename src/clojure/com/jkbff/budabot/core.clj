@@ -280,7 +280,7 @@
 			(db/add-batch-record timestamp)
 			(run timestamp)
 			(let [elapsed (- (helper/unix-epoch-seconds) timestamp)]
-				(db/update-batch-record timestamp {:elapsed elapsed
+				(db/update-batch-record timestamp {:duration elapsed
 												   :success 1
 												   :orgs (.getCount metrics/org-meter)
 												   :orged_chars (.getCount metrics/org-char-meter)
