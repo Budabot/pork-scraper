@@ -92,6 +92,7 @@
 			(nil? db-char)
 			(do
 				(db/insert-char db-conn current-char)
+				(db/update-player-history db-conn name server)
 				(.inc metrics/inserted-chars-counter))
 
 			; if both are deleted, or both are the same, update last_checked only
@@ -103,12 +104,14 @@
 			(= 1 (:deleted current-char))
 			(do
 				(db/delete-char db-conn name server timestamp)
+				(db/update-player-history db-conn name server)
 				(.inc metrics/deleted-chars-counter))
 
 			; otherwise update existing record
 			:else
 			(do
 				(db/update-char db-conn current-char)
+				(db/update-player-history db-conn name server)
 				(.inc metrics/updated-chars-counter)))))
 
 (defn update-guild-if-changed
@@ -123,6 +126,7 @@
 			(nil? db-org-info)
 			(do
 				(db/insert-guild db-conn current-org-info)
+				(db/update-guild-history db-conn guild-id server)
 				;(.inc metrics/inserted-chars-counter)
 				)
 
@@ -135,6 +139,7 @@
 			(= 1 (:deleted current-org-info))
 			(do
 				(db/delete-guild db-conn guild-id server timestamp)
+				(db/update-guild-history db-conn guild-id server)
 				;(.inc metrics/deleted-chars-counter)
 				)
 
@@ -142,6 +147,7 @@
 			:else
 			(do
 				(db/update-guild db-conn current-org-info)
+				(db/update-guild-history db-conn guild-id server)
 				;(.inc metrics/updated-chars-counter)
 				))))
 
@@ -255,10 +261,7 @@
 
 		(.awaitTermination save-chars-pool timeout-in-seconds TimeUnit/SECONDS))
 
-	; update player_history and guild_history tables
-	(db/update-player-history timestamp)
-	(db/update-guild-history timestamp)
-	; guilds not updated should be marked as deleted
+	; TODO guilds not updated should be marked as deleted
 	)
 
 (defn -main

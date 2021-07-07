@@ -65,22 +65,32 @@
 				   ["dt = ?", timestamp])
 		require-single-update))
 
-(defn update-player-history
+(defn update-all-player-history
 	[timestamp]
 	(j/execute! (get-db) ["INSERT INTO player_history SELECT * FROM player WHERE last_changed = ?"
 						  timestamp]))
 
-(defn update-guild-history
+(defn update-all-guild-history
 	[timestamp]
 	(j/execute! (get-db) ["INSERT INTO guild_history SELECT * FROM guild WHERE last_changed = ?"
 						  timestamp]))
+
+(defn update-player-history
+	[db-conn name server]
+	(j/execute! db-conn ["INSERT INTO player_history SELECT * FROM player WHERE nickname = ? AND server = ? LIMIT 1"
+						 name server]))
+
+(defn update-guild-history
+	[db-conn guild-id server]
+	(j/execute! db-conn ["INSERT INTO guild_history SELECT * FROM guild WHERE guild_id = ? AND server = ? LIMIT 1"
+						  guild-id server]))
 
 ; player
 
 (defn get-char
 	[db-conn name server]
 	(->
-		(j/query db-conn ["SELECT * FROM player WHERE nickname = ? AND server = ?"
+		(j/query db-conn ["SELECT * FROM player WHERE nickname = ? AND server = ? LIMIT 1"
 						  name server])
 		extract-single-result))
 
@@ -131,7 +141,7 @@
 	[db-conn guild-id server]
 	(try
 		(->
-			(j/query db-conn ["SELECT * FROM guild WHERE guild_id = ? AND server = ?"
+			(j/query db-conn ["SELECT * FROM guild WHERE guild_id = ? AND server = ? LIMIT 1"
 							  guild-id server])
 			extract-single-result)
 		(catch Exception e (log/error e guild-id server))))
